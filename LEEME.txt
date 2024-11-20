@@ -1,0 +1,5 @@
+1) abrir la carpeta del proyecto desde la linea de comandos de desarrollador de visual studio
+2) Compilar el archivo base con el siguiente comando:
+    cl /c base.cpp /Fo:base.obj
+3) Enlazar las librerías con el siguiente comando:
+    cl base.obj /link /LIBPATH:lib/ode /LIBPATH:lib/raylib ode_doubled.lib raylib.lib opengl32.lib kernel32.lib user32.lib shell32.lib gdi32.lib winmm.lib msvcrt.lib /NODEFAULTLIB:LIBCMT /out:base.exe
