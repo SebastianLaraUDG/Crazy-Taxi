@@ -4,6 +4,7 @@
 
 #include <cstdio> // sprintf
 #include <string> // std::to_strinng()
+// TODO: Hacer que el punto de recoleccion varie mas su distancia de respawn
 
 static dWorldID world;
 static dSpaceID space;
@@ -11,7 +12,7 @@ static dBodyID ball;
 static dGeomID ballGeom;
 static dMass m;
 static dJointGroupID contactGroup;
-const dReal radius = 0.5;
+const dReal RADIUS = 0.5;
 
 /// @brief Convierte una posicion ODE a un Vector3 de Raylib (falta testearse)
 /// @param pos Posicion en coordenadas ODE (comunmente la posicion de un dBodyID)
@@ -41,11 +42,11 @@ static void crearBolita()
 {
     ball = dBodyCreate(world);
     dMass m;
-    dMassSetSphere(&m, 1, radius);
+    dMassSetSphere(&m, 1, RADIUS);
     dBodySetMass(ball, &m);
     dBodySetPosition(ball, 0, 0, 2);
 
-    ballGeom = dCreateSphere(space, radius);
+    ballGeom = dCreateSphere(space, RADIUS);
     dGeomSetBody(ballGeom, ball);
 }
 
@@ -133,30 +134,70 @@ void nearCallback(void *data, dGeomID o1, dGeomID o2)
 }
 
 /// @brief Funcion de prueba para imprimir el tiempo restante, falta parametrizar los segundos
-static void imprimeTiempo(){
+/// @param segundosRestantes
+static void imprimeTiempo(int &segundosRestantes,const int& segundosParaAmarillo = 30, const int& segundosParaRojo = 10)
+{
     static int framesCounter = 0;
     framesCounter++;
-    char buff[20]={};
+    char buff[20] = {};
+    // Imprime la cantidad de frames transcurridos
     sprintf(buff, "%d", framesCounter);
-    DrawText(buff,20,30,22,PURPLE);
+    DrawText(buff, 20, 30, 22, PURPLE);
 
-    static int segundosRestantes = 10;
-    if(framesCounter%60 == 0)
-    segundosRestantes--;
+    // 60 frames restan un segundo
+    if (framesCounter % 60 == 0)
+        segundosRestantes--;
 
+    // Imprime el tiempo restante dependiendo del color
+    const int posX = GetScreenWidth()/2 - 20;
     sprintf(buff, "%d", segundosRestantes);
-    DrawText(buff,20,50,22,GREEN);
-    if(segundosRestantes <= 5)
-    DrawText(buff,20,50,22,RED);
+    DrawText(buff, posX, 0, 50, GREEN);
+    if (segundosRestantes <= segundosParaAmarillo)
+        DrawText(buff, posX, 0, 50, YELLOW);
+    if (segundosRestantes <= segundosParaRojo)
+        DrawText(buff, posX, 0, 50, RED);
 }
 
-static void imprimeVelocidadTaxi(const dBodyID& taxi){
-    const dReal* velocidad = dBodyGetForce(taxi);
-    Vector3 velV3 = {(float)velocidad[0],(float)velocidad[2],(float)velocidad[1]};
-    float velX = (float)velocidad[2];
-    char buff[20] = {};
-    sprintf(buff,"Vx:%f",velX);
-    DrawText(buff,0,60,25,BROWN);
+
+static bool TaxiEstaQuieto(const dBodyID& taxiBody){
+    const dReal* fuerza = dBodyGetLinearVel(taxiBody);
+    const dReal VEL_CERO = 0.8;
+    if ((fuerza[0] < VEL_CERO && fuerza[0] > -VEL_CERO) && (fuerza[1] < VEL_CERO && fuerza[1] > -VEL_CERO))
+        return true;
+
+    return false;
+}
+
+
+static void GiraCamara(Camera &camera, const Vector3 &posTaxi,const Model& taxi)
+{
+    //
+    // TraceLog(LOG_INFO,std::to_string(GetMouseDelta().x).c_str()); // -x - - - - x
+    // TraceLog(LOG_INFO,std::to_string(GetMouseDelta().y).c_str()); // -y
+    // y
+    const Vector3 rightVector =     {1.0f, 0.0f, 0.0f};
+    const Vector3 upVector =        {0.0f, 1.0f, 0.0f};
+    const Vector3 forwardVector =   {0.0f, 0.0f, 1.0f};
+
+    Vector3 transformedRightVector = Vector3Transform(rightVector,taxi.transform);
+    Vector3 transformedUpVector = Vector3Transform(upVector, taxi.transform);
+    Vector3 transformedForwardVector = Vector3Transform(forwardVector, taxi.transform);
+
+    const Vector2 delta = GetMouseDelta();
+    const float SENSIBILIDAD = 0.2f;
+    
+
+    //camera.target = posTaxi;
+   /*
+   camera.position = Vector3RotateByAxisAngle(camera.position, {1.0f, 0.0f, 0.0f}, -delta.y * DEG2RAD * SENSIBILIDAD);
+   camera.position = Vector3RotateByAxisAngle(camera.position, {0.0f, 1.0f, 0.0f}, -delta.x * DEG2RAD * SENSIBILIDAD);
+   */
+
+    camera.position = Vector3RotateByAxisAngle(camera.position, transformedRightVector, -delta.y * DEG2RAD * SENSIBILIDAD);
+    camera.position = Vector3RotateByAxisAngle(camera.position, transformedUpVector, -delta.x * DEG2RAD * SENSIBILIDAD);
+
+    //camera.position = Vector3Add(posTaxi,Vector3Normalize(camera.position));
+    camera.target = posTaxi;
 }
 
 //------------------------------------------------------------------------------------
@@ -171,17 +212,20 @@ int main(void)
 
     InitWindow(screenWidth, screenHeight, "TAXI? si gracias");
 
+    int segundosRestantes = 60; // Inicializar siempre mayor a cero
+    const int TIEMPO_ADICIONAL = 5; // Tiempo a agregar al tocar un punto de recoleccion
+    const float VELOCIDAD_TAXI = 35.0f;
+
     SetWindowMonitor(1);
     // Definimos la camara para ver nuestro espacio 3D
     Camera camera = {0};
     camera.position = {0.0f, 10.0f, 10.0f};
-    // camera.position = {0.0f, 1.0f, 10.0f};
+    // camera.position = {0.0f, 1.0f, 10.0f}; Para ver a nivel de suelo TODO: Solo debug
     camera.target = {0.0f, 0.0f, 0.0f};
     camera.up = {0.0f, 1.0f, 0.0f};
     camera.fovy = 45.0f;
     camera.projection = CAMERA_PERSPECTIVE;
 
-    float contador = 0.0f;
     // Anadimos el modelo del auto (y llantas)
     Model taxi = LoadModel("assets/taxi_base.glb");
     Model llantaI = LoadModel("assets/llanta_izq.glb");
@@ -210,16 +254,6 @@ int main(void)
     // Crear la bolita
     crearBolita();
 
-    // Crear rampa
-    dBodyID rampaBody;
-    dGeomID rampaGeom;
-    crearRampa(rampaBody, rampaGeom, {10.0f, 2.0f, 0.0f}, 2.0f, 6.0f, 3.0f);
-
-    //--
-    dBodyID cubo;
-    dGeomID geomTest;
-    crearRampa(cubo, geomTest, {10, 0, 10}, 1, 1, 1);
-
     // Crear el piso
     dGeomID ground = dCreatePlane(space, 0, 0, 1, 0);
 
@@ -229,6 +263,7 @@ int main(void)
     {
         // Update
         //----------------------------------------------------------------------------------
+        
         // Agregar fuerza a bolita
         // Definir rotacion de las llantas y a  aplicar al taxi
         float rotationStep = 0;
@@ -256,20 +291,23 @@ int main(void)
         wheelRPos = Vector3Transform(wheelRPos, taxi.transform);
         
         Matrix taxiRotation;
+        Vector3 accelerationVector = Vector3Zero();
         if (IsKeyDown(KEY_W))
         {
             taxiRotation = MatrixRotateY(rotationStep);
             taxi.transform = MatrixMultiply(taxi.transform, taxiRotation);
-            Vector3 accelerationVector = Vector3Scale(transformedForwardVector, 35);
-            dBodyAddForce(ball, accelerationVector.x, accelerationVector.z, accelerationVector.y);
+            accelerationVector = Vector3Scale(transformedForwardVector, VELOCIDAD_TAXI);
+           // dBodyAddForce(ball, accelerationVector.x, accelerationVector.z, accelerationVector.y);
         }
         if (IsKeyDown(KEY_S))
         { // Reversa
-            Matrix taxiRotation = MatrixRotateY(-rotationStep);
+            taxiRotation = MatrixRotateY(-rotationStep);
             taxi.transform = MatrixMultiply(taxi.transform, taxiRotation);
-            Vector3 accelerationVector = Vector3Scale(transformedForwardVector, 35);
-            dBodyAddForce(ball, -accelerationVector.x, -accelerationVector.z, -accelerationVector.y);
+            accelerationVector = Vector3Scale(transformedForwardVector, VELOCIDAD_TAXI);
+            accelerationVector = Vector3Scale(accelerationVector,-1.0f);
+            //dBodyAddForce(ball, -accelerationVector.x, -accelerationVector.z, -accelerationVector.y);
         }
+        dBodyAddForce(ball, accelerationVector.x, accelerationVector.z, accelerationVector.y);
 
         // Actualizacion del sistema de fisica
         dSpaceCollide(space, 0, &nearCallback);
@@ -278,10 +316,15 @@ int main(void)
 
         const dReal *pos = dBodyGetPosition(ball);
         Vector3 correctedPos = {(float)pos[0], (float)pos[2], (float)pos[1]};
-        // camera.position = Vector3Add(correctedPos, {0, 10, 10});
-        camera.target = correctedPos;
+        //camera.position = Vector3Add(correctedPos, {0, 10, 10});
+        //camera.target = correctedPos;
+        
+        if(IsMouseButtonDown(MOUSE_BUTTON_RIGHT))
+            GiraCamara(camera, correctedPos, taxi);
 
-        // Rotacion del muro
+        // Rotacion del muro TODO:
+        //simulaRotacion
+        
 
         // Draw
         //----------------------------------------------------------------------------------
@@ -290,36 +333,43 @@ int main(void)
         ClearBackground(RAYWHITE);
 
         BeginMode3D(camera);
-
+        
+        // Dibuja el taxi
         DrawModel(taxi, Vector3Add(correctedPos, {0, -0.5, 0}), 1.0f, WHITE);
         DrawModel(llantaI, Vector3Add(correctedPos, wheelLPos), 1.0f, WHITE);
         DrawModel(llantaD, Vector3Add(correctedPos, wheelRPos), 1.0f, WHITE);
 
-        // DrawSphereWires( correctedPos, 1.0f, 16, 16, LIME);
+        DrawSphereWires( correctedPos, 1.0f, 16, 16, LIME);
 
-        DrawLine3D(correctedPos, Vector3Add(correctedPos, transformedForwardVector), RED);
+        DrawLine3D(correctedPos, Vector3Add(correctedPos, Vector3Scale(transformedForwardVector,3.0f)), RED);
 
-        // Dibuja posible muro
-        const dReal *posMuro = dBodyGetPosition(rampaBody);
+        // Dibuja posible muro TODO TEST
+    /*    const dReal *posMuro = dBodyGetPosition(rampaBody);
         const Vector3 posMuroV = {(float)posMuro[0], (float)posMuro[2], (float)posMuro[1]};
-
         DrawCubeWires(posMuroV, 2.0f, 6.0f, 3.0f, RED);
         DrawCube(posMuroV, 2.0f, 6.0f, 3.0f, BLUE);
-        DrawModel(marcador, Vector3Zero(), 1, GREEN);
+
+    */
+        // Dibuja marcador(objeto a recoger)
+        DrawModel(marcador, Vector3Zero(), 1, GOLD);
 
         DrawGrid(100, 1.0f);             // Draw a grid
-        simulaRotacion(rampa, geomTest); //--
+      
+    /*  simulaRotacion(rampa, geomTest); //--
+    */
 
         // Dibuja la bounding box del taxi
         DrawBoundingBox(boundBoxTaxi, RED);
+
+        // Colision con el marcadot cambia su posicion
         BoundingBox marcadorbb = GetModelBoundingBox(marcador);
         bool enMarcador = CheckCollisionBoxSphere(marcadorbb, correctedPos, 1.0f);
-
-        if (enMarcador)
+        if (enMarcador && TaxiEstaQuieto(ball))
         {
             DrawModel(marcador, Vector3Zero(), 1, RED);
             traslacion = MatrixTranslate(GetRandomValue(-10, 10), 0.0f, GetRandomValue(-10, 10));
             marcador.transform = MatrixMultiply(marcador.transform, traslacion);
+            segundosRestantes += TIEMPO_ADICIONAL;
         }
 
         DrawBoundingBox(marcadorbb, PURPLE);
@@ -327,8 +377,7 @@ int main(void)
         EndMode3D();
 
         dibujaInfoTaxi(dBodyGetPosition(ball), taxi.transform);
-        imprimeVelocidadTaxi(ball);
-        imprimeTiempo();
+        imprimeTiempo(segundosRestantes);
         DrawFPS(10, 10);
 
         EndDrawing();
