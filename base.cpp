@@ -170,7 +170,7 @@ static bool TaxiEstaQuieto(const dBodyID& taxiBody){
 
 static void GiraCamara(Camera &camera, float &rotationX, float &rotationY, const Vector3 &posTaxi, const Model &taxi, const Vector3 &camOffset, Vector3 &posRelativa)
 {
-    const Vector2 delta = GetMouseDelta();
+    Vector2 delta = GetMouseDelta();
     const float SENSIBILIDAD = 0.2f;
 
     Vector2 mousePosition = GetMousePosition();
@@ -184,6 +184,7 @@ static void GiraCamara(Camera &camera, float &rotationX, float &rotationY, const
     camera.position = Vector3Add(posTaxi, cameraPosition);
     // Limitamos la altura de la camara para no atravesar el suelo
     camera.position.y = Clamp(camera.position.y, 0.5f, 10.0f);
+    
     camera.target = posTaxi;
 
     // Guardamos la posicion relativa para que mientras no se presiona el boton del mouse, siga a cierta distancia
@@ -212,7 +213,7 @@ int main(void)
     // Definimos la camara para ver nuestro espacio 3D
     Camera camera = {0};
     camera.position = {0.0f, 5.0f, -10.0f};
-    Vector3 camOffset = {0.0f,5.0f,-10.0f};
+    Vector3 camOffset = {0.0f, 5.0f, -10.0f};
     // camera.position = {0.0f, 1.0f, 10.0f}; Para ver a nivel de suelo TODO: Solo debug
     camera.target = {0.0f, 0.0f, 0.0f};
     camera.up = {0.0f, 1.0f, 0.0f};
@@ -322,6 +323,9 @@ int main(void)
             camera.position = Vector3Add(correctedPos, posRelativa);
             camera.target = correctedPos;
         }
+        // Limitamos la altura de la camara para no atravesar el suelo
+        camera.position.y = Clamp(camera.position.y, 1.5f, 10.0f);
+        
         //camera.target = correctedPos;
         // Rotacion del muro TODO:
         //simulaRotacion
