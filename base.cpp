@@ -168,36 +168,28 @@ static bool TaxiEstaQuieto(const dBodyID& taxiBody){
     return false;
 }
 
-
-static void GiraCamara(Camera &camera, const Vector3 &posTaxi,const Model& taxi)
+static void GiraCamara(Camera &camera, const Vector3 &posTaxi, const Model &taxi, const Vector3 &camOffset)
 {
     //
-    // TraceLog(LOG_INFO,std::to_string(GetMouseDelta().x).c_str()); // -x - - - - x
-    // TraceLog(LOG_INFO,std::to_string(GetMouseDelta().y).c_str()); // -y
-    // y
-    const Vector3 rightVector =     {1.0f, 0.0f, 0.0f};
-    const Vector3 upVector =        {0.0f, 1.0f, 0.0f};
-    const Vector3 forwardVector =   {0.0f, 0.0f, 1.0f};
-
-    Vector3 transformedRightVector = Vector3Transform(rightVector,taxi.transform);
-    Vector3 transformedUpVector = Vector3Transform(upVector, taxi.transform);
-    Vector3 transformedForwardVector = Vector3Transform(forwardVector, taxi.transform);
-
     const Vector2 delta = GetMouseDelta();
     const float SENSIBILIDAD = 0.2f;
-    
 
-    //camera.target = posTaxi;
-   /*
-   camera.position = Vector3RotateByAxisAngle(camera.position, {1.0f, 0.0f, 0.0f}, -delta.y * DEG2RAD * SENSIBILIDAD);
-   camera.position = Vector3RotateByAxisAngle(camera.position, {0.0f, 1.0f, 0.0f}, -delta.x * DEG2RAD * SENSIBILIDAD);
-   */
+    static float rotationY = 0.0f, rotationX = 0.0f;
+    Vector2 mousePosition = GetMousePosition();
 
-    camera.position = Vector3RotateByAxisAngle(camera.position, transformedRightVector, -delta.y * DEG2RAD * SENSIBILIDAD);
-    camera.position = Vector3RotateByAxisAngle(camera.position, transformedUpVector, -delta.x * DEG2RAD * SENSIBILIDAD);
+    rotationY -= delta.x * SENSIBILIDAD * 0.01f; // Rotacion en el eje y
+    rotationX += delta.y * SENSIBILIDAD * 0.01f; // Rotacion en el eje x TODO: eje z no funciona correctamente
 
-    //camera.position = Vector3Add(posTaxi,Vector3Normalize(camera.position));
+    // Calcula la posicion de la camara utilizando la matriz de rotacion del Taxi
+    Matrix cameraMatrix = MatrixMultiply(MatrixRotateY(rotationY), MatrixRotateX(rotationX));
+    Vector3 cameraPosition = Vector3Transform(camOffset, MatrixMultiply(taxi.transform, cameraMatrix));
+    camera.position = Vector3Add(posTaxi, cameraPosition);
     camera.target = posTaxi;
+
+    //camOffset = Vector3Subtract(posTaxi, camera.position);
+    // Vector3 transformedUpVector = Vector3Transform(camera.up, taxi.transform);
+    // camera.up = transformedUpVector;
+
 }
 
 //------------------------------------------------------------------------------------
@@ -219,7 +211,8 @@ int main(void)
     SetWindowMonitor(1);
     // Definimos la camara para ver nuestro espacio 3D
     Camera camera = {0};
-    camera.position = {0.0f, 10.0f, 10.0f};
+    camera.position = {0.0f, 5.0f, -10.0f};
+    Vector3 camOffset = {0.0f,5.0f,-10.0f};
     // camera.position = {0.0f, 1.0f, 10.0f}; Para ver a nivel de suelo TODO: Solo debug
     camera.target = {0.0f, 0.0f, 0.0f};
     camera.up = {0.0f, 1.0f, 0.0f};
@@ -318,10 +311,16 @@ int main(void)
         Vector3 correctedPos = {(float)pos[0], (float)pos[2], (float)pos[1]};
         //camera.position = Vector3Add(correctedPos, {0, 10, 10});
         //camera.target = correctedPos;
-        
+        Vector3 distTaxi = camOffset;// nombre correcto lastPosCam?
         if(IsMouseButtonDown(MOUSE_BUTTON_RIGHT))
-            GiraCamara(camera, correctedPos, taxi);
+            GiraCamara(camera, correctedPos, taxi, camOffset);
 
+        else
+        {
+            camera.position = Vector3Add(correctedPos, camOffset);
+            camera.target = correctedPos;
+        }
+        //camera.target = correctedPos;
         // Rotacion del muro TODO:
         //simulaRotacion
         
