@@ -168,28 +168,28 @@ static bool TaxiEstaQuieto(const dBodyID& taxiBody){
     return false;
 }
 
-static void GiraCamara(Camera &camera, const Vector3 &posTaxi, const Model &taxi, const Vector3 &camOffset)
+static void GiraCamara(Camera &camera, float &rotationX, float &rotationY, const Vector3 &posTaxi, const Model &taxi, const Vector3 &camOffset, Vector3 &posRelativa)
 {
-    //
     const Vector2 delta = GetMouseDelta();
     const float SENSIBILIDAD = 0.2f;
 
-    static float rotationY = 0.0f, rotationX = 0.0f;
     Vector2 mousePosition = GetMousePosition();
-
+    
     rotationY -= delta.x * SENSIBILIDAD * 0.01f; // Rotacion en el eje y
     rotationX += delta.y * SENSIBILIDAD * 0.01f; // Rotacion en el eje x TODO: eje z no funciona correctamente
 
-    // Calcula la posicion de la camara utilizando la matriz de rotacion del Taxi
+    // Calcula la posicion de la camara utilizando la matriz de rotacion del taxi
     Matrix cameraMatrix = MatrixMultiply(MatrixRotateY(rotationY), MatrixRotateX(rotationX));
     Vector3 cameraPosition = Vector3Transform(camOffset, MatrixMultiply(taxi.transform, cameraMatrix));
     camera.position = Vector3Add(posTaxi, cameraPosition);
+    // Limitamos la altura de la camara para no atravesar el suelo
+    camera.position.y = Clamp(camera.position.y, 0.5f, 10.0f);
     camera.target = posTaxi;
 
-    //camOffset = Vector3Subtract(posTaxi, camera.position);
-    // Vector3 transformedUpVector = Vector3Transform(camera.up, taxi.transform);
-    // camera.up = transformedUpVector;
-
+    // Guardamos la posicion relativa para que mientras no se presiona el boton del mouse, siga a cierta distancia
+    // del taxi
+    posRelativa = cameraPosition;
+    TraceLog(LOG_INFO,std::to_string(camera.position.y).c_str());
 }
 
 //------------------------------------------------------------------------------------
@@ -218,6 +218,8 @@ int main(void)
     camera.up = {0.0f, 1.0f, 0.0f};
     camera.fovy = 45.0f;
     camera.projection = CAMERA_PERSPECTIVE;
+    float rotationX = 0.0f;
+    float rotationY = 0.0f;
 
     // Anadimos el modelo del auto (y llantas)
     Model taxi = LoadModel("assets/taxi_base.glb");
@@ -311,13 +313,13 @@ int main(void)
         Vector3 correctedPos = {(float)pos[0], (float)pos[2], (float)pos[1]};
         //camera.position = Vector3Add(correctedPos, {0, 10, 10});
         //camera.target = correctedPos;
-        Vector3 distTaxi = camOffset;// nombre correcto lastPosCam?
-        if(IsMouseButtonDown(MOUSE_BUTTON_RIGHT))
-            GiraCamara(camera, correctedPos, taxi, camOffset);
-
+        static Vector3 posRelativa = camOffset;
+        if(IsMouseButtonDown(MOUSE_BUTTON_RIGHT)){
+            GiraCamara(camera, rotationX, rotationY, correctedPos, taxi, camOffset, posRelativa);
+        }
         else
         {
-            camera.position = Vector3Add(correctedPos, camOffset);
+            camera.position = Vector3Add(correctedPos, posRelativa);
             camera.target = correctedPos;
         }
         //camera.target = correctedPos;
