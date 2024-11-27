@@ -19,8 +19,7 @@ public:
 
 static bool ClicEnBoton(const Rectangle &);
 
-// Clases derivadas
-
+// Clases derivadas ----------------------------------------------
 
 // La escena del menu principal
 class EscenaInicio : public Escena
@@ -34,6 +33,7 @@ public:
 private:
     const int ANCHO_BOTON = 300;
     const int ALTO_BOTON = 50;
+
     // El sprite que se muestra en pantalla
     Model taxi;
     // [0] es boton inicio, [1] es boton salir
@@ -48,7 +48,6 @@ public:
     void Update(int &);
     void Draw() const;
     void DeInit();
-    
 
 private:
     // Variables de fisica
@@ -61,32 +60,41 @@ private:
     const dReal RADIUS = 0.5;
     dGeomID ground;
 
-    // nearCallback Auxiliares
-    static dWorldID* worldAuxCallback;
-    static dJointGroupID* contactGroupAuxCallback;
+    // Auxiliares de nearCallback(colisiones)
+    static dWorldID *worldAuxCallback;
+    static dJointGroupID *contactGroupAuxCallback;
 
     // Variables de game loop
-    int segundosRestantes; // Inicializar siempre mayor a cero
-    const int TIEMPO_ADICIONAL = 5; // Tiempo a agregar al tocar un punto de recoleccion
-    const float VELOCIDAD_TAXI = 60.0f;//TODO: 35.0f;
+
+    // Inicializar siempre mayor a cero
+    int segundosRestantes;
+
+    // Tiempo a agregar al tocar un punto de recoleccion
+    const int TIEMPO_ADICIONAL = 5;
+
+    const float VELOCIDAD_TAXI = 60.0f;
     Camera camera;
-    Vector3 camOffset; // La distancia a la que la camara esta del taxi siempre
+    // La distancia a la que la camara esta del taxi siempre
+    Vector3 camOffset;
+    // Rotacion de la camara relativa al taxi (en ambos x,y)
     float rotationX;
     float rotationY;
+    // Matriz encargada de desplazar el punto de recoleccion
     Matrix traslacion;
 
     // Assets
     Model taxi;
     Model llantaI;
     Model llantaD;
+    // Punto de recoleccion
     Model marcador;
 
-    bool TaxiEstaQuieto(const dBodyID& taxiBody) const;
+    bool TaxiEstaQuieto(const dBodyID &taxiBody) const;
     void GiraCamara(Camera &camera, float &rotationX, float &rotationY, const Vector3 &posTaxi, const Model &taxi, const Vector3 &camOffset, Vector3 &posRelativa);
     void GestionaTimer();
     void DibujaTiempoRestante(int segundosParaAmarillo = 30, int segundosParaRojo = 10) const;
-    
-    // Funcion de fisicas
+
+    // Funcion de fisicas (colisiones)
     static void nearCallback(void *data, dGeomID o1, dGeomID o2);
 };
 

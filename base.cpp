@@ -1,6 +1,3 @@
-//#include "include/raylib/raylib.h"
-//#include "include/raylib/raymath.h"
-//#include "include/ode/ode.h"
 #include "include/Escena.hpp"
 
 // TODO: Hacer que el punto de recoleccion varie mas su distancia de respawn
@@ -62,11 +59,8 @@ int main(void)
     const int screenHeight = 450;
 
     InitWindow(screenWidth, screenHeight, "TAXI? si gracias");
+    
 
-    
-    SetWindowMonitor(1);
-    
-   
     SetTargetFPS(60); // Hacemos que el juego corra a 60 fps (idealmente)
     
     // Inicializacion del sistema de escenas
@@ -74,9 +68,7 @@ int main(void)
  
     int indiceEscenaPasada = indiceEscenaActual;
     Escena *escenaActual = new EscenaInicio();
- 
     escenaActual->Init();
-    
     
     // Loop principal
     while (!WindowShouldClose() && indiceEscenaActual != Escena::INDICE_SALIDA) // Detectar si se cierra la ventana o se presiona ESC
@@ -103,13 +95,10 @@ int main(void)
     /*
     NOTA: a pesar de que existe el puntero a Escena (el manejador de escenas), no es necesario
     usar delete con este puntero, ya que lo usamos dentro de la funcion DeInit de las clases derivadas
-    */
-   TraceLog(LOG_INFO, "sali del WHILE");
-   
-   
+    */   
     escenaActual->DeInit();
 
-    CloseWindow(); // Cerrar ventana y conteexto OpenGL
+    CloseWindow(); // Cerrar ventana y contexto OpenGL
     //--------------------------------------------------------------------------------------
 
     return 0;

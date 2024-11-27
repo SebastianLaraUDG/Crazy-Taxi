@@ -1,8 +1,7 @@
 #include "../include/Escena.hpp"
-#include "include/raylib/raylib.h"
 #include "include/raylib/raymath.h"
-//#include <cstdio> // sprintf
-//#include <string> // std::to_string()
+// #include <cstdio> // sprintf
+// #include <string> // std::to_string()
 
 // Liberacion de memoria dinamica para evitar exceso de uso/asignacion en la Gestion de escenas de base.cpp
 void Escena::DeInit()
@@ -14,24 +13,12 @@ void Escena::DeInit()
 
 // Inicializamos punteros necesarios en la funcion de actualizacion
 // de fisicas
-dWorldID* EscenaJugable::worldAuxCallback = nullptr;
-dJointGroupID* EscenaJugable::contactGroupAuxCallback = nullptr;
+dWorldID *EscenaJugable::worldAuxCallback = nullptr;
+dJointGroupID *EscenaJugable::contactGroupAuxCallback = nullptr;
 
-/*
-/// @brief Si se dio clic en algun menu/boton (inicio,salir, etc)
-/// @param boton Las dimensiones y posicion del posible boton
-/// @return Si el boton fue presionado, de otra forma false
-bool EscenaInteractuable::ClicEnBoton(const Rectangle &boton) const
-{
-    if (IsMouseButtonDown(MOUSE_BUTTON_LEFT))
-    {
-        const Vector2 mousePos = GetMousePosition();
-        if (CheckCollisionPointRec(mousePos, boton))
-            return true;
-    }
-    return false;
-}
-*/
+/// @brief "Trigger" de clic sobre botones
+/// @param boton Un boton definido por un rectangulo
+/// @return
 bool ClicEnBoton(const Rectangle &boton)
 {
     if (IsMouseButtonDown(MOUSE_BUTTON_LEFT))
@@ -47,8 +34,9 @@ bool ClicEnBoton(const Rectangle &boton)
 
 void EscenaInicio::Init()
 {
-    // Imagen del personaje
+    // Modelo del taxi
     taxi = LoadModel("assets/taxi_base.glb");
+
     // Boton de inicio
     botones[0] = {
         static_cast<float>(GetScreenWidth() / 2 - ANCHO_BOTON / 2),
@@ -81,11 +69,23 @@ void EscenaInicio::Update(int &indiceEscenaActual)
 }
 void EscenaInicio::Draw() const
 {
+
+    // cam.position = {0.0f, 5.0f, -10.0f};
+
+    Camera camera = {0};
+    camera.position = {0.0f, 0.0f, 5.0f};
+    camera.target = Vector3Zero();
+    camera.up = {0.0f, 1.0f, 0.0f};
+    camera.fovy = 45.0f;
+    camera.projection = CAMERA_PERSPECTIVE;
+
     ClearBackground(BLACK);
 
-    // Imagen del personaje
-    DrawModel(taxi, {(float)GetScreenWidth() / 2.0f, 0.0f, (float)GetScreenHeight() / 2.0f}, 1.0f, WHITE);
-    //    DrawTexture(imagen, botones[0].x + 90, 0, WHITE);
+    BeginMode3D(camera);
+
+    DrawModel(taxi, Vector3Zero(), 1.0f, WHITE);
+
+    EndMode3D();
 
     // Boton de inicio
     DrawRectangleRec(botones[0], BLUE);
@@ -141,23 +141,22 @@ void EscenaJugable::Init()
     contactGroup = dJointGroupCreate(0);
 
     dWorldSetGravity(world, 0, 0, -9.81);
-    dWorldSetAngularDamping(world, 0.15);// TODO: 0.1?
+    dWorldSetAngularDamping(world, 0.15); // TODO: 0.1?
 
     // Crear la colision del taxi
     ball = dBodyCreate(world);
     dMass m;
     dMassSetSphere(&m, 1, RADIUS);
-    
 
     dBodySetMass(ball, &m);
-    dBodySetPosition(ball, 0, 0, 2);
+    dBodySetPosition(ball, 0, 0, 1);
     ballGeom = dCreateSphere(space, RADIUS);
-    
+
     dGeomSetBody(ballGeom, ball);
 
     // Crear el piso
     ground = dCreatePlane(space, 0, 0, 1, 0);
-    
+
     worldAuxCallback = &world;
     contactGroupAuxCallback = &contactGroup;
 }
@@ -208,7 +207,7 @@ void EscenaJugable::Update(int &indiceEscenaActual)
         accelerationVector = Vector3Scale(transformedForwardVector, VELOCIDAD_TAXI);
         dBodyAddForce(ball, -accelerationVector.x, -accelerationVector.z, -accelerationVector.y);
     }
-    
+
     // Actualizacion del sistema de fisica
     dSpaceCollide(space, 0, &EscenaJugable::nearCallback);
     dWorldStep(world, timeStep);
@@ -265,7 +264,7 @@ void EscenaJugable::Draw() const
     DrawModel(llantaD, Vector3Add(correctedPos, wheelRPos), 1.0f, WHITE);
 
     DrawSphereWires(correctedPos, 1.0f, 16, 16, LIME);
-    
+
     //   DrawLine3D(correctedPos, Vector3Add(correctedPos, Vector3Scale(transformedForwardVector,3.0f)), RED);
 
     // Dibuja marcador(objeto a recoger)
@@ -276,7 +275,7 @@ void EscenaJugable::Draw() const
     BoundingBox marcadorbb = GetModelBoundingBox(marcador);
     DrawBoundingBox(marcadorbb, PURPLE);
     EndMode3D();
-    
+
     DrawFPS(10, 10);
     DibujaTiempoRestante();
 }
@@ -289,12 +288,12 @@ void EscenaJugable::DeInit()
     dSpaceDestroy(space);
     dWorldDestroy(world);
     dCloseODE();
-    
+
     UnloadModel(taxi);
     UnloadModel(llantaI);
     UnloadModel(llantaD);
     UnloadModel(marcador);
-    
+
     Escena::DeInit();
 }
 
@@ -304,7 +303,7 @@ void EscenaJugable::nearCallback(void *data, dGeomID o1, dGeomID o2)
     dContact contact[MAX_CONTACTS];
 
     int numc = dCollide(o1, o2, MAX_CONTACTS, &contact[0].geom, sizeof(dContact));
-    
+
     for (int i = 0; i < numc; i++)
     {
         contact[i].surface.mode = dContactBounce;
@@ -315,7 +314,6 @@ void EscenaJugable::nearCallback(void *data, dGeomID o1, dGeomID o2)
         dJointAttach(c, dGeomGetBody(o1), dGeomGetBody(o2));
     }
 }
-
 
 bool EscenaJugable::TaxiEstaQuieto(const dBodyID &taxiBody) const
 {
@@ -364,10 +362,11 @@ void EscenaJugable::GestionaTimer()
     framesCounter++;
 }
 
-void EscenaJugable::DibujaTiempoRestante(int segundosParaAmarillo,int segundosParaRojo) const{
+void EscenaJugable::DibujaTiempoRestante(int segundosParaAmarillo, int segundosParaRojo) const
+{
     char buff[20] = {};
 
-    const int posX = GetScreenWidth()/2 - 20;
+    const int posX = GetScreenWidth() / 2 - 20;
 
     // Dibuja el texto de color dependiendo del tiempo restante
     sprintf(buff, "%d", segundosRestantes);
@@ -418,7 +417,7 @@ void EscenaDerrota::Draw() const
 
     // Boton de REINICIAR
     DrawRectangleRec(botonReiniciar, GREEN);
-    DrawText("REINICIAR JUEGO", botonReiniciar.x + 10.0f , botonReiniciar.y + ANCHO_BOTON / 4, 20, WHITE);
+    DrawText("REINICIAR JUEGO", botonReiniciar.x + 10.0f, botonReiniciar.y + ANCHO_BOTON / 4, 20, WHITE);
 
     // Boton de SALIR
     DrawRectangleRec(botonSalir, RED);
