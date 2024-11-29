@@ -93,6 +93,7 @@ private:
     void GiraCamara(Camera &camera, float &rotationX, float &rotationY, const Vector3 &posTaxi, const Model &taxi, const Vector3 &camOffset, Vector3 &posRelativa);
     void GestionaTimer();
     void DibujaTiempoRestante(int segundosParaAmarillo = 30, int segundosParaRojo = 10) const;
+    void Movimiento();
 
     // Funcion de fisicas (colisiones)
     static void nearCallback(void *data, dGeomID o1, dGeomID o2);

@@ -66,12 +66,11 @@ void EscenaInicio::Update(int &indiceEscenaActual)
     {
         indiceEscenaActual = INDICE_SALIDA;
     }
+    taxi.transform = MatrixMultiply(taxi.transform, MatrixRotateY(0.4f * GetFrameTime()));
 }
 void EscenaInicio::Draw() const
 {
-
-    // cam.position = {0.0f, 5.0f, -10.0f};
-
+    // Camara 3D para ver el modelo al inicio del juego
     Camera camera = {0};
     camera.position = {0.0f, 0.0f, 5.0f};
     camera.target = Vector3Zero();
@@ -134,14 +133,13 @@ void EscenaJugable::Init()
     marcador.transform = MatrixMultiply(marcador.transform, traslacion);
 
     // Inicializacion de ODE (sistema de fisicas)
-    dInitODE(); // TODO: es correcta la inicializacion de ODE aqui o deberia
-                // colocarse en cada update?
+    dInitODE();
     world = dWorldCreate();
     space = dSimpleSpaceCreate(0);
     contactGroup = dJointGroupCreate(0);
 
     dWorldSetGravity(world, 0, 0, -9.81);
-    dWorldSetAngularDamping(world, 0.15); // TODO: 0.1?
+    dWorldSetAngularDamping(world, 0.15);
 
     // Crear la colision del taxi
     ball = dBodyCreate(world);
@@ -149,7 +147,7 @@ void EscenaJugable::Init()
     dMassSetSphere(&m, 1, RADIUS);
 
     dBodySetMass(ball, &m);
-    dBodySetPosition(ball, 0, 0, 1);
+    dBodySetPosition(ball, 0, 0, .7);   // Posicion inicial del taxi
     ballGeom = dCreateSphere(space, RADIUS);
 
     dGeomSetBody(ballGeom, ball);
@@ -157,6 +155,8 @@ void EscenaJugable::Init()
     // Crear el piso
     ground = dCreatePlane(space, 0, 0, 1, 0);
 
+    // Guardamos punteros a variables de mundo (responsables de fisicas)
+    // Esto por el metodo nearCallback que no acepta mas de 3 parametros
     worldAuxCallback = &world;
     contactGroupAuxCallback = &contactGroup;
 }
@@ -165,48 +165,8 @@ void EscenaJugable::Update(int &indiceEscenaActual)
 {
     const dReal timeStep = 0.01;
 
-    // Agregar fuerza a bolita
-    // Definir rotacion de las llantas y a  aplicar al taxi
-    float rotationStep = 0;
-    float wheelRotation = 0;
-    if (IsKeyDown(KEY_D))
-    {
-        wheelRotation = -0.5;
-        rotationStep = -0.04;
-    }
-    else if (IsKeyDown(KEY_A))
-    {
-        wheelRotation = 0.5;
-        rotationStep = 0.04;
-    }
-    // Aplicar rotacion a llantas
-    Matrix llantaIRotationM = MatrixRotateY(wheelRotation);
-    llantaI.transform = MatrixMultiply(taxi.transform, llantaIRotationM);
-    llantaD.transform = llantaI.transform;
-    Vector3 forwardVector = {0.0f, 0.0f, 1.0f};
-    // Vector3 wheelLPos = {0.36f, -0.28f, 0.78f};
-    //  Vector3 wheelRPos = {-0.36f, -0.28f, 0.78f};
-    // Transform forward vector using model matrix
-    Vector3 transformedForwardVector = Vector3Transform(forwardVector, taxi.transform);
-    //   wheelLPos = Vector3Transform(wheelLPos, taxi.transform);
-    //    wheelRPos = Vector3Transform(wheelRPos, taxi.transform);
-
-    Matrix taxiRotation;
-    Vector3 accelerationVector = Vector3Zero();
-    if (IsKeyDown(KEY_W))
-    {
-        taxiRotation = MatrixRotateY(rotationStep);
-        taxi.transform = MatrixMultiply(taxi.transform, taxiRotation);
-        accelerationVector = Vector3Scale(transformedForwardVector, VELOCIDAD_TAXI);
-        dBodyAddForce(ball, accelerationVector.x, accelerationVector.z, accelerationVector.y);
-    }
-    if (IsKeyDown(KEY_S))
-    { // Reversa
-        taxiRotation = MatrixRotateY(-rotationStep);
-        taxi.transform = MatrixMultiply(taxi.transform, taxiRotation);
-        accelerationVector = Vector3Scale(transformedForwardVector, VELOCIDAD_TAXI);
-        dBodyAddForce(ball, -accelerationVector.x, -accelerationVector.z, -accelerationVector.y);
-    }
+    // Input y movimiento
+    Movimiento();
 
     // Actualizacion del sistema de fisica
     dSpaceCollide(space, 0, &EscenaJugable::nearCallback);
@@ -215,8 +175,8 @@ void EscenaJugable::Update(int &indiceEscenaActual)
 
     const dReal *pos = dBodyGetPosition(ball);
     Vector3 correctedPos = {(float)pos[0], (float)pos[2], (float)pos[1]};
-    // camera.position = Vector3Add(correctedPos, {0, 10, 10});
-    // camera.target = correctedPos;
+    
+    // Posicion de la camara relativa al taxi
     static Vector3 posRelativa = camOffset;
     if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT))
     {
@@ -227,6 +187,8 @@ void EscenaJugable::Update(int &indiceEscenaActual)
         camera.position = Vector3Add(correctedPos, posRelativa);
         camera.target = correctedPos;
     }
+
+
     // Limitamos la altura de la camara para no atravesar el suelo
     camera.position.y = Clamp(camera.position.y, 1.5f, 10.0f);
 
@@ -375,6 +337,49 @@ void EscenaJugable::DibujaTiempoRestante(int segundosParaAmarillo, int segundosP
         DrawText(buff, posX, 0, 50, YELLOW);
     if (segundosRestantes <= segundosParaRojo)
         DrawText(buff, posX, 0, 50, RED);
+}
+
+void EscenaJugable::Movimiento(){
+    // Agregar fuerza a bolita
+    // Definir rotacion de las llantas y a  aplicar al taxi
+    float rotationStep = 0;
+    float wheelRotation = 0;
+    if (IsKeyDown(KEY_D))
+    {
+        wheelRotation = -0.5;
+        rotationStep = -0.04;
+    }
+    else if (IsKeyDown(KEY_A))
+    {
+        wheelRotation = 0.5;
+        rotationStep = 0.04;
+    }
+    // Aplicar rotacion a llantas
+    Matrix llantaIRotationM = MatrixRotateY(wheelRotation);
+    llantaI.transform = MatrixMultiply(taxi.transform, llantaIRotationM);
+    llantaD.transform = llantaI.transform;
+    const Vector3 forwardVector = {0.0f, 0.0f, 1.0f};
+    
+    // Transform forward vector using model matrix
+    Vector3 transformedForwardVector = Vector3Transform(forwardVector, taxi.transform);
+
+    // Aplica fuerzas (simula movimiento)
+    Matrix taxiRotation;
+    Vector3 accelerationVector = Vector3Zero();
+    if (IsKeyDown(KEY_W))
+    {
+        taxiRotation = MatrixRotateY(rotationStep);
+        taxi.transform = MatrixMultiply(taxi.transform, taxiRotation);
+        accelerationVector = Vector3Scale(transformedForwardVector, VELOCIDAD_TAXI);
+        dBodyAddForce(ball, accelerationVector.x, accelerationVector.z, accelerationVector.y);
+    }
+    if (IsKeyDown(KEY_S))
+    { // Reversa
+        taxiRotation = MatrixRotateY(-rotationStep);
+        taxi.transform = MatrixMultiply(taxi.transform, taxiRotation);
+        accelerationVector = Vector3Scale(transformedForwardVector, VELOCIDAD_TAXI);
+        dBodyAddForce(ball, -accelerationVector.x, -accelerationVector.z, -accelerationVector.y);
+    }
 }
 
 //--------------------------------------------------------------
