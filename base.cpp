@@ -1,14 +1,5 @@
 #include "include/Escena.hpp"
 
-// TODO: Hacer que el punto de recoleccion varie mas su distancia de respawn
-// TODO: Limpieza de codigo
-// TODO: agregar los obstaculos
-
-/*
-Para compilar checa de nuevo LEEME.TXT
-*/
-
-
 void GestionaEscena(Escena *&escenaActual, int &indiceEscenaActual, int &indiceEscenaPasada,const int& INDICE_SALIDA = -1)
 {
     if(!escenaActual)

@@ -5,6 +5,7 @@
 
 #include "include/raylib/raylib.h"
 #include "include/ode/ode.h"
+#include <vector>
 
 // Clase abstracta
 class Escena
@@ -59,6 +60,9 @@ private:
     dJointGroupID contactGroup;
     const dReal RADIUS = 0.5;
     dGeomID ground;
+    std::vector<dBodyID> obstaculosBody;
+    std::vector<dGeomID> obstaculosGeom;
+
 
     // Auxiliares de nearCallback(colisiones)
     static dWorldID *worldAuxCallback;
@@ -79,6 +83,8 @@ private:
     // Rotacion de la camara relativa al taxi (en ambos x,y)
     float rotationX;
     float rotationY;
+    // Posicion de la camara relativa al taxi
+    Vector3 posRelativa;
     // Matriz encargada de desplazar el punto de recoleccion
     Matrix traslacion;
 
@@ -97,6 +103,9 @@ private:
 
     // Funcion de fisicas (colisiones)
     static void nearCallback(void *data, dGeomID o1, dGeomID o2);
+    static void crearObstaculo(dBodyID&,dGeomID&,const Vector3&,const Vector3&,dWorldID&,dSpaceID&);
+    static void dibujaObstaculos(const std::vector<dBodyID> &, const std::vector<dGeomID> &);
+    static float generaNumeroAleatorio();
 };
 
 class EscenaDerrota : public Escena

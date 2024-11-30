@@ -7,5 +7,5 @@
 
 Comandos actualizados por la Escena.hpp y Escena.cpp:
 cl /c base.cpp /Fo:base.obj
-cl /c escena.cpp /Fo:escena.obj /I"D:\ProyectoBaseODE\include"
+cl /c escena.cpp /Fo:escena.obj /I"D:\Proyecto3ODE\include"
 cl base.obj escena.obj /link /LIBPATH:lib/ode /LIBPATH:lib/raylib ode_doubled.lib raylib.lib opengl32.lib kernel32.lib user32.lib shell32.lib gdi32.lib winmm.lib msvcrt.lib /NODEFAULTLIB:LIBCMT /out:base.exe
