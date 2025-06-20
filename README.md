@@ -30,5 +30,14 @@ Ten cuidado con los **obstáculos** 🚧.
 
 ### 📷 Capturas de ejecución
 
-```markdown
-![Texto alternativo](ruta/relativa/a/la/imagen.png)
+---
+### Menu de inicio
+![Captura del juego](/Screenshots/Crazy%20taxi%20screenshot%20(1).png)
+
+---
+### Captura del juego 1/2
+![Captura del juego](/Screenshots/Crazy%20taxi%20screenshot%20(2).png)
+
+---
+### Captura del juego 2/2
+![Captura del juego](/Screenshots/Crazy%20taxi%20screenshot%20(4).png)
